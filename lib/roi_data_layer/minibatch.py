@@ -13,6 +13,9 @@ import cv2
 from fast_rcnn.config import cfg
 from utils.blob import prep_im_for_blob, im_list_to_blob
 
+class NoLabels(Exception):
+    pass
+
 def get_minibatch(roidb, num_classes):
     """Given a roidb, construct a minibatch sampled from it."""
     num_images = len(roidb)
@@ -33,11 +36,14 @@ def get_minibatch(roidb, num_classes):
     labels_blob = np.zeros((0), dtype=np.float32)
     bbox_targets_blob = np.zeros((0, 4 * num_classes), dtype=np.float32)
     bbox_loss_blob = np.zeros(bbox_targets_blob.shape, dtype=np.float32)
-    # all_overlaps = []
+    all_overlaps = []
     for im_i in xrange(num_images):
         labels, overlaps, im_rois, bbox_targets, bbox_loss \
             = _sample_rois(roidb[im_i], fg_rois_per_image, rois_per_image,
                            num_classes)
+
+        if len(labels) == 0:
+            raise NoLabels
 
         # Add to RoIs blob
         rois = _project_im_rois(im_rois, im_scales[im_i])
@@ -49,10 +55,20 @@ def get_minibatch(roidb, num_classes):
         labels_blob = np.hstack((labels_blob, labels))
         bbox_targets_blob = np.vstack((bbox_targets_blob, bbox_targets))
         bbox_loss_blob = np.vstack((bbox_loss_blob, bbox_loss))
-        # all_overlaps = np.hstack((all_overlaps, overlaps))
+        all_overlaps = np.hstack((all_overlaps, overlaps))
 
     # For debug visualizations
-    # _vis_minibatch(im_blob, rois_blob, labels_blob, all_overlaps)
+    #print type(bbox_targets_blob[0])
+    #print len(labels_blob)
+    #print labels_blob
+    #print all_overlaps
+    #print bbox_targets_blob
+    #print bbox_loss_blob
+    #if np.sum(labels_blob):
+    #    _vis_minibatch(im_blob, rois_blob, labels_blob, all_overlaps)
+
+    if len(labels_blob) == 0:
+        raise NoLabels
 
     blobs = {'data': im_blob,
              'rois': rois_blob,
@@ -72,6 +88,10 @@ def _sample_rois(roidb, fg_rois_per_image, rois_per_image, num_classes):
     labels = roidb['max_classes']
     overlaps = roidb['max_overlaps']
     rois = roidb['boxes']
+
+    #handle when we don't have rois
+    if len(rois) == 0:
+        return [],[],[],[],[]
 
     # Select foreground RoIs as those with >= FG_THRESH overlap
     fg_inds = np.where(overlaps >= cfg.TRAIN.FG_THRESH)[0]
@@ -118,6 +138,7 @@ def _get_image_blob(roidb, scale_inds):
     num_images = len(roidb)
     processed_ims = []
     im_scales = []
+    #print "num_images: {}".format(num_images)
     for i in xrange(num_images):
         im = cv2.imread(roidb[i]['image'])
         if roidb[i]['flipped']:
@@ -165,7 +186,10 @@ def _get_bbox_regression_labels(bbox_target_data, num_classes):
 def _vis_minibatch(im_blob, rois_blob, labels_blob, overlaps):
     """Visualize a mini-batch for debugging."""
     import matplotlib.pyplot as plt
+    #print "visulize {} datas".format(rois_blob.shape[0])
     for i in xrange(rois_blob.shape[0]):
+        #if labels_blob[i] != 1 and overlaps[i] < 0.5:
+        #    continue
         rois = rois_blob[i, :]
         im_ind = rois[0]
         roi = rois[1:]
@@ -182,3 +206,4 @@ def _vis_minibatch(im_blob, rois_blob, labels_blob, overlaps):
                           edgecolor='r', linewidth=3)
             )
         plt.show()
+

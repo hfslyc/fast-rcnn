@@ -13,6 +13,7 @@ import roi_data_layer.roidb as rdl_roidb
 from utils.timer import Timer
 import numpy as np
 import os
+import sys
 
 from caffe.proto import caffe_pb2
 import google.protobuf as pb2
@@ -83,6 +84,7 @@ class SolverWrapper(object):
 
     def train_model(self, max_iters):
         """Network training loop."""
+        print "train start"
         last_snapshot_iter = -1
         timer = Timer()
         while self.solver.iter < max_iters:

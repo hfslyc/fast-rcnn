@@ -211,7 +211,7 @@ def vis_detections(im, class_name, dets, thresh=0.3):
     """Visual debugging of detections."""
     import matplotlib.pyplot as plt
     im = im[:, :, (2, 1, 0)]
-    for i in xrange(np.minimum(10, dets.shape[0])):
+    for i in xrange(np.minimum(1000, dets.shape[0])):
         bbox = dets[i, :4]
         score = dets[i, -1]
         if score > thresh:
@@ -278,6 +278,10 @@ def test_net(net, imdb):
         _t['im_detect'].tic()
         scores, boxes = im_detect(net, im, roidb[i]['boxes'])
         _t['im_detect'].toc()
+        #if 1: 
+        #    print scores[:,:]
+        #    print boxes[0,:]
+
 
         _t['misc'].tic()
         for j in xrange(1, imdb.num_classes):
@@ -301,19 +305,23 @@ def test_net(net, imdb):
             all_boxes[j][i] = \
                     np.hstack((cls_boxes, cls_scores[:, np.newaxis])) \
                     .astype(np.float32, copy=False)
-
             if 0:
                 keep = nms(all_boxes[j][i], 0.3)
-                vis_detections(im, imdb.classes[j], all_boxes[j][i][keep, :])
+                vis_detections(im, imdb.classes[j], all_boxes[j][i][keep, :], 0.3)
+                ##vis_detections(im, imdb.classes[j], roidb[i]['boxes'], 0)
+                #print imdb.image_path_at(i)
+                #print roidb[i]['boxes'].shape
+                #print roidb[i]['boxes']
+                 
         _t['misc'].toc()
-
+      
         print 'im_detect: {:d}/{:d} {:.3f}s {:.3f}s' \
               .format(i + 1, num_images, _t['im_detect'].average_time,
                       _t['misc'].average_time)
 
     for j in xrange(1, imdb.num_classes):
         for i in xrange(num_images):
-            inds = np.where(all_boxes[j][i][:, -1] > thresh[j])[0]
+            inds = np.where(all_boxes[j][i][:, -1] >= thresh[j])[0]
             all_boxes[j][i] = all_boxes[j][i][inds, :]
 
     det_file = os.path.join(output_dir, 'detections.pkl')

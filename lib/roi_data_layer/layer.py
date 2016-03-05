@@ -6,13 +6,12 @@
 # --------------------------------------------------------
 
 """The data layer used during training to train a Fast R-CNN network.
-
 RoIDataLayer implements a Caffe Python layer.
 """
 
 import caffe
 from fast_rcnn.config import cfg
-from roi_data_layer.minibatch import get_minibatch
+from roi_data_layer.minibatch import get_minibatch, NoLabels
 import numpy as np
 import yaml
 from multiprocessing import Process, Queue
@@ -36,16 +35,20 @@ class RoIDataLayer(caffe.Layer):
 
     def _get_next_minibatch(self):
         """Return the blobs to be used for the next minibatch.
-
         If cfg.TRAIN.USE_PREFETCH is True, then blobs will be computed in a
         separate process and made available through self._blob_queue.
         """
         if cfg.TRAIN.USE_PREFETCH:
             return self._blob_queue.get()
         else:
-            db_inds = self._get_next_minibatch_inds()
-            minibatch_db = [self._roidb[i] for i in db_inds]
-            return get_minibatch(minibatch_db, self._num_classes)
+            while True:
+                db_inds = self._get_next_minibatch_inds()
+                minibatch_db = [self._roidb[i] for i in db_inds]
+                try:
+                    return get_minibatch(minibatch_db, self._num_classes)
+                except NoLabels:
+                    #print "Nolabel"
+                    pass #Have another go                    
 
     def set_roidb(self, roidb):
         """Set the roidb to be used by this layer during training."""
@@ -105,8 +108,8 @@ class RoIDataLayer(caffe.Layer):
 
     def forward(self, bottom, top):
         """Get blobs and copy them into this layer's top blob vector."""
-        blobs = self._get_next_minibatch()
 
+        blobs = self._get_next_minibatch()
         for blob_name, blob in blobs.iteritems():
             top_ind = self._name_to_top_map[blob_name]
             # Reshape net's input blobs
@@ -156,5 +159,8 @@ class BlobFetcher(Process):
         while True:
             db_inds = self._get_next_minibatch_inds()
             minibatch_db = [self._roidb[i] for i in db_inds]
-            blobs = get_minibatch(minibatch_db, self._num_classes)
-            self._queue.put(blobs)
+            try:
+                blobs = get_minibatch(minibatch_db, self._num_classes)
+                self._queue.put(blobs)
+            except NoLabels:
+                pass #Keep looping

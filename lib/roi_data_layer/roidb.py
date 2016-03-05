@@ -47,10 +47,14 @@ def add_bbox_regression_targets(roidb):
     num_classes = roidb[0]['gt_overlaps'].shape[1]
     for im_i in xrange(num_images):
         rois = roidb[im_i]['boxes']
+        gt_rois = roidb[im_i]['gt_boxes']
+        if len(rois) == 0: 
+            roidb[im_i]['bbox_targets']=[]
+            continue
         max_overlaps = roidb[im_i]['max_overlaps']
         max_classes = roidb[im_i]['max_classes']
         roidb[im_i]['bbox_targets'] = \
-                _compute_targets(rois, max_overlaps, max_classes)
+                _compute_targets(rois, gt_rois, max_overlaps, max_classes)
 
     # Compute values needed for means and stds
     # var(x) = E(x^2) - E(x)^2
@@ -59,6 +63,7 @@ def add_bbox_regression_targets(roidb):
     squared_sums = np.zeros((num_classes, 4))
     for im_i in xrange(num_images):
         targets = roidb[im_i]['bbox_targets']
+        if not len(targets): continue
         for cls in xrange(1, num_classes):
             cls_inds = np.where(targets[:, 0] == cls)[0]
             if cls_inds.size > 0:
@@ -72,6 +77,7 @@ def add_bbox_regression_targets(roidb):
     # Normalize targets
     for im_i in xrange(num_images):
         targets = roidb[im_i]['bbox_targets']
+        if not len(targets): continue
         for cls in xrange(1, num_classes):
             cls_inds = np.where(targets[:, 0] == cls)[0]
             roidb[im_i]['bbox_targets'][cls_inds, 1:] -= means[cls, :]
@@ -81,24 +87,31 @@ def add_bbox_regression_targets(roidb):
     # (the predicts will need to be unnormalized and uncentered)
     return means.ravel(), stds.ravel()
 
-def _compute_targets(rois, overlaps, labels):
+def _compute_targets(rois, gt_rois, overlaps, labels):
     """Compute bounding-box regression targets for an image."""
     # Ensure ROIs are floats
     rois = rois.astype(np.float, copy=False)
+    gt_rois = gt_rois.astype(np.float, copy=False)
 
     # Indices of ground-truth ROIs
-    gt_inds = np.where(overlaps == 1)[0]
+    # gt_inds = np.where(overlaps == 1)[0]
     # Indices of examples for which we try to make predictions
     ex_inds = np.where(overlaps >= cfg.TRAIN.BBOX_THRESH)[0]
 
     # Get IoU overlap between each ex ROI and gt ROI
     ex_gt_overlaps = utils.cython_bbox.bbox_overlaps(rois[ex_inds, :],
-                                                     rois[gt_inds, :])
+                                                     gt_rois[:, :])
+    
+    targets = np.zeros((rois.shape[0], 5), dtype=np.float32)
+
+    #No gt or no overlaps above threshold
+    if len(ex_gt_overlaps) == 0:
+        return targets
 
     # Find which gt ROI each ex ROI has max overlap with:
     # this will be the ex ROI's gt target
     gt_assignment = ex_gt_overlaps.argmax(axis=1)
-    gt_rois = rois[gt_inds[gt_assignment], :]
+    gt_rois = gt_rois[gt_assignment, :]
     ex_rois = rois[ex_inds, :]
 
     ex_widths = ex_rois[:, 2] - ex_rois[:, 0] + cfg.EPS
@@ -116,10 +129,10 @@ def _compute_targets(rois, overlaps, labels):
     targets_dw = np.log(gt_widths / ex_widths)
     targets_dh = np.log(gt_heights / ex_heights)
 
-    targets = np.zeros((rois.shape[0], 5), dtype=np.float32)
     targets[ex_inds, 0] = labels[ex_inds]
     targets[ex_inds, 1] = targets_dx
     targets[ex_inds, 2] = targets_dy
     targets[ex_inds, 3] = targets_dw
     targets[ex_inds, 4] = targets_dh
     return targets
+

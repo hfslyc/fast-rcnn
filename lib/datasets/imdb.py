@@ -86,7 +86,6 @@ class imdb(object):
         Each list element is a list of length number-of-images.
         Each of those list elements is either an empty list []
         or a numpy array of detection.
-
         all_boxes[class][image] = [] or np.array of shape #dets x 5
         """
         raise NotImplementedError
@@ -99,10 +98,22 @@ class imdb(object):
             boxes = self.roidb[i]['boxes'].copy()
             oldx1 = boxes[:, 0].copy()
             oldx2 = boxes[:, 2].copy()
-            boxes[:, 0] = widths[i] - oldx2 - 1
-            boxes[:, 2] = widths[i] - oldx1 - 1
-            assert (boxes[:, 2] >= boxes[:, 0]).all()
+            oldx2 = np.clip(oldx2,0,widths[i])
+            boxes[:, 0] = widths[i] - oldx2
+            boxes[:, 2] = widths[i] - oldx1
+
+            #do it again for gt_boxes
+            gt_boxes = self.roidb[i]['gt_boxes'].copy()
+            gt_oldx1 = gt_boxes[:, 0].copy()
+            gt_oldx2 = gt_boxes[:, 2].copy()
+            gt_oldx2 = np.clip(gt_oldx2,0,widths[i])
+            gt_boxes[:, 0] = widths[i] - gt_oldx2
+            gt_boxes[:, 2] = widths[i] - gt_oldx1
+            
+            assert (boxes[:, 2] >= boxes[:, 0]).all(), "type {} img {} width : {}\n {} \n {} \n ".format(boxes.dtype,i,widths[i],boxes, self.roidb[i]['boxes'])
+
             entry = {'boxes' : boxes,
+                     'gt_boxes' : gt_boxes,
                      'gt_overlaps' : self.roidb[i]['gt_overlaps'],
                      'gt_classes' : self.roidb[i]['gt_classes'],
                      'flipped' : True}
@@ -159,18 +170,23 @@ class imdb(object):
             num_boxes = boxes.shape[0]
             overlaps = np.zeros((num_boxes, self.num_classes), dtype=np.float32)
 
+            gt_boxes = []
             if gt_roidb is not None:
                 gt_boxes = gt_roidb[i]['boxes']
-                gt_classes = gt_roidb[i]['gt_classes']
-                gt_overlaps = bbox_overlaps(boxes.astype(np.float),
+
+                #Need at least one box for argmax
+                if gt_boxes.shape[0] > 0:
+                    gt_classes = gt_roidb[i]['gt_classes']
+                    gt_overlaps = bbox_overlaps(boxes.astype(np.float),
                                             gt_boxes.astype(np.float))
-                argmaxes = gt_overlaps.argmax(axis=1)
-                maxes = gt_overlaps.max(axis=1)
-                I = np.where(maxes > 0)[0]
-                overlaps[I, gt_classes[argmaxes[I]]] = maxes[I]
+                    argmaxes = gt_overlaps.argmax(axis=1)
+                    maxes = gt_overlaps.max(axis=1)
+                    I = np.where(maxes > 0)[0]
+                    overlaps[I, gt_classes[argmaxes[I]]] = maxes[I]
 
             overlaps = scipy.sparse.csr_matrix(overlaps)
             roidb.append({'boxes' : boxes,
+                          'gt_boxes' : gt_boxes,
                           'gt_classes' : np.zeros((num_boxes,),
                                                   dtype=np.int32),
                           'gt_overlaps' : overlaps,
@@ -182,12 +198,20 @@ class imdb(object):
         assert len(a) == len(b)
         for i in xrange(len(a)):
             a[i]['boxes'] = np.vstack((a[i]['boxes'], b[i]['boxes']))
+            a[i]['gt_boxes'] = b[i]['gt_boxes'] #hackish
             a[i]['gt_classes'] = np.hstack((a[i]['gt_classes'],
                                             b[i]['gt_classes']))
-            a[i]['gt_overlaps'] = scipy.sparse.vstack([a[i]['gt_overlaps'],
-                                                       b[i]['gt_overlaps']])
+            a[i]['gt_overlaps'] = imdb.vstack([a[i]['gt_overlaps'],
+                                               b[i]['gt_overlaps']])
+            
         return a
 
+    @staticmethod
+    def vstack(blocks):
+        """As spipy.sparse.vstack, but allowing for the lack of gt overlaps"""
+        blocks = [[block] for block in blocks if block.shape[0]]
+        return scipy.sparse.bmat(blocks)
+        
     def competition_mode(self, on):
         """Turn competition mode on or off."""
         pass
