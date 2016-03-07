@@ -16,6 +16,7 @@ import scipy.io as sio
 import utils.cython_bbox
 import cPickle
 import subprocess
+import h5py
 
 class inria(datasets.imdb):
     def __init__(self, image_set, devkit_path):
@@ -136,7 +137,7 @@ class inria(datasets.imdb):
 
         return roidb
 
-    def _load_selective_search_roidb(self, gt_roidb):
+    def _load_selective_search_roidb_old(self, gt_roidb):
         filename = os.path.abspath(os.path.join(self._devkit_path,
                                                 self.name + '.mat'))
         assert os.path.exists(filename), \
@@ -146,6 +147,18 @@ class inria(datasets.imdb):
         box_list = []
         for i in xrange(raw_data.shape[0]):
             box_list.append(raw_data[i] - 1)
+
+	return self.create_roidb_from_box_list(box_list, gt_roidb)
+
+    def _load_selective_search_roidb(self, gt_roidb):
+        filename = os.path.abspath(os.path.join(self._devkit_path,
+                                                self.name + '.mat'))
+        assert os.path.exists(filename), \
+               'Selective search data not found at: {}'.format(filename)
+
+        f = h5py.File(filename)
+        box_list = [np.transpose(f[element[0]][:]-1) for element in f['allBoxes']]
+        
 
 	return self.create_roidb_from_box_list(box_list, gt_roidb)
 
@@ -221,20 +234,6 @@ class inria(datasets.imdb):
                                        dets[k, 0] + 1, dets[k, 1] + 1,
                                        dets[k, 2] - dets[k, 0], dets[k, 3] - dets[k, 1], dets[k, -1],))
         return comp_id
-
-    def _do_matlab_eval(self, comp_id, output_dir='output'):
-        rm_results = self.config['cleanup']
-
-        path = os.path.join(os.path.dirname(__file__),
-                            'VOCdevkit-matlab-wrapper')
-        cmd = 'cd {} && '.format(path)
-        cmd += '{:s} -nodisplay -nodesktop '.format(datasets.MATLAB)
-        cmd += '-r "dbstop if error; '
-        cmd += 'setenv(\'LC_ALL\',\'C\'); voc_eval(\'{:s}\',\'{:s}\',\'{:s}\',\'{:s}\',{:d}); quit;"' \
-               .format(self._devkit_path, comp_id,
-                       self._image_set, output_dir, int(rm_results))
-        print('Running:\n{}'.format(cmd))
-        status = subprocess.call(cmd, shell=True)
 
     def evaluate_detections(self, all_boxes, output_dir):
         comp_id = self._write_inria_results_file(all_boxes, output_dir)
