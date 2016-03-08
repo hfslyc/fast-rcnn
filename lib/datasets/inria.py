@@ -120,6 +120,9 @@ class inria(datasets.imdb):
         elif self._image_set == 'train04_finetune_80':
             gt_roidb = self.gt_roidb()
             roidb = self._load_selective_search_roidb(gt_roidb)
+        elif self._image_set == 'train04_finetune_second':
+            gt_roidb = self.gt_roidb()
+            roidb = self._load_selective_search_roidb(gt_roidb)
         elif self._image_set == 'train04_finetune_test':
             gt_roidb = self.gt_roidb()
             roidb = self._load_selective_search_roidb(gt_roidb)
