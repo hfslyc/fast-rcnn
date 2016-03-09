@@ -901,11 +901,11 @@ layer {
   bottom: "cls_score_concat"
   top: "fusion_hidden"
   param {
-    lr_mult: 1
+    lr_mult: 10
     decay_mult: 1
   }
   param {
-    lr_mult: 2
+    lr_mult: 20
     decay_mult: 0
   }
   inner_product_param {
@@ -918,6 +918,21 @@ layer {
       type: "constant"
       value: 0
     }
+  }
+}
+layer {
+  name: "relu_fusion"
+  type: "ReLU"
+  bottom: "fusion_hidden"
+  top: "fusion_hidden"
+}
+layer {
+  name: "drop_fusion"
+  type: "Dropout"
+  bottom: "fusion_hidden"
+  top: "fusion_hidden"
+  dropout_param {
+    dropout_ratio: 0.5
   }
 }
 
@@ -927,15 +942,15 @@ layer {
   bottom: "fusion_hidden"
   top: "cls_score_fusion"
   param {
-    lr_mult: 1
+    lr_mult: 10
     decay_mult: 1
   }
   param {
-    lr_mult: 2
+    lr_mult: 20
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 32
+    num_output: 2
     weight_filler {
       type: "gaussian"
       std: 0.001
@@ -946,7 +961,6 @@ layer {
     }
   }
 }
-
 layer {
   name: "cls_prob"
   type: "Softmax"

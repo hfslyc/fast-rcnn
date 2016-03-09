@@ -957,6 +957,21 @@ layer {
     }
   }
 }
+layer {
+  name: "relu_fusion"
+  type: "ReLU"
+  bottom: "fusion_hidden"
+  top: "fusion_hidden"
+}
+layer {
+  name: "drop_fusion"
+  type: "Dropout"
+  bottom: "fusion_hidden"
+  top: "fusion_hidden"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+}
 
 layer {
   name: "fusion_score"
@@ -972,7 +987,7 @@ layer {
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 32
+    num_output: 2
     weight_filler {
       type: "gaussian"
       std: 0.001

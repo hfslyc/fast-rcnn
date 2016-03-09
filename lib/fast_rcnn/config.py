@@ -100,7 +100,7 @@ __C.TEST.NMS = 0.3
 __C.TEST.SVM = False
 
 # Test using bounding-box regressors
-__C.TEST.BBOX_REG = TRUE
+__C.TEST.BBOX_REG = True
 
 #
 # MISC
@@ -128,7 +128,7 @@ __C.EPS = 1e-14
 __C.ROOT_DIR = osp.abspath(osp.join(osp.dirname(__file__), '..', '..'))
 
 # Place outputs under an experiments directory
-__C.EXP_DIR = 'Caltech_finetune_second'
+__C.EXP_DIR = 'Caltech_fusion'
 
 def get_output_dir(imdb, net):
     """Return the directory where experimental artifacts are placed.
