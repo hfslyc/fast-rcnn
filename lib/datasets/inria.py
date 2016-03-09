@@ -23,7 +23,7 @@ class inria(datasets.imdb):
         datasets.imdb.__init__(self, image_set)
         self._image_set = image_set
         self._devkit_path = devkit_path
-        self._data_path = os.path.join(self._devkit_path, 'data')
+        self._data_path = os.path.join(self._devkit_path)
         self._classes = ('__background__', # always index 0
                          'person')
         self._class_to_ind = dict(zip(self.classes, xrange(self.num_classes)))
