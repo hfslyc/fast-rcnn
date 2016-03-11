@@ -127,7 +127,7 @@ class inria(datasets.imdb):
         elif self._image_set == 'train04_finetune_test':
             gt_roidb = self.gt_roidb()
             roidb = self._load_selective_search_roidb(gt_roidb)
-        elif self._image_set != 'test':
+        elif self._image_set != 'test': #train01, train04...etc
             gt_roidb = self.gt_roidb()
             ss_roidb = self._load_selective_search_roidb(gt_roidb)
             roidb = datasets.imdb.merge_roidbs(gt_roidb, ss_roidb)
@@ -236,6 +236,17 @@ class inria(datasets.imdb):
                                 format(im_ind + 1, 
                                        dets[k, 0] + 1, dets[k, 1] + 1,
                                        dets[k, 2] - dets[k, 0], dets[k, 3] - dets[k, 1], dets[k, -1],))
+
+            cmd = '{:s} -nodisplay -nodesktop '.format('matlab')
+            cmd += '-r "dbstop if error; '
+            cmd += 'addpath(\'lib/datasets/Caltech_eval/\'); '
+            cmd += '[gt,dt,miss] = MCL_eval(\'{:s}\'); '.format(filename)
+            cmd += 'save {:s}/result_res.mat dt gt miss; '.format(path)
+            cmd += 'exit;"'
+
+            print('Running:\n{}'.format(cmd))
+            status = subprocess.call(cmd, shell=True)
+
         return comp_id
 
     def evaluate_detections(self, all_boxes, output_dir):
@@ -251,6 +262,6 @@ class inria(datasets.imdb):
             self.config['cleanup'] = True
 
 if __name__ == '__main__':
-    d = datasets.inria('train', '')
+    d = datasets.inria('train01', '')
     res = d.roidb
     from IPython import embed; embed()

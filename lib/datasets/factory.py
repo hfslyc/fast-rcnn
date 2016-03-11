@@ -39,10 +39,9 @@ for top_k in np.arange(1000, 11000, 1000):
                     _selective_search_IJCV_top_k(split, year, top_k))
 
 # Set up inria_<split> using selective search "fast" mode
-inria_devkit_path = '/home/eeb433/Documents/Eddy/fast-rcnn/data/Caltech'
-for split in ['train','train04','train04_noNms','test','train04_finetune','train04_tracking','train04_finetune_test','train04_finetune_80','train04_finetune_second']:
+inria_devkit_path = '/home/eeb439/Documents/wayne/datasets/Caltech'
+for split in ['train01','train04','train04_noNms','test','train04_finetune','train04_tracking','train04_finetune_test','train04_finetune_80','train04_finetune_second']:
     name = '{}_{}'.format('inria', split)
-    print datasets.inria
     __sets[name] = (lambda split=split: datasets.inria.inria(split, inria_devkit_path))
 
 def get_imdb(name):

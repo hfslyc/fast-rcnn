@@ -1,0 +1,7 @@
+EXP_DIR: "Caltech_train01"
+TRAIN:
+  SNAPSHOT_ITERS: 5000
+  BBOX_REG: True
+  
+TEST:
+  BBOX_REG: True
