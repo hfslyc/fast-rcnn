@@ -115,6 +115,9 @@ class inria(datasets.imdb):
         if self._image_set == 'train04_finetune':
             gt_roidb = self.gt_roidb()
             roidb = self._load_selective_search_roidb(gt_roidb)
+        elif self._image_set == 'train04_score_ft':
+            gt_roidb = self.gt_roidb()
+            roidb = self._load_selective_search_roidb(gt_roidb)
         elif self._image_set == 'train04_tracking':
             gt_roidb = self.gt_roidb()
             roidb = self._load_selective_search_roidb(gt_roidb)
@@ -161,9 +164,12 @@ class inria(datasets.imdb):
 
         f = h5py.File(filename)
         box_list = [np.transpose(f[element[0]][:]-1) for element in f['allBoxes']]
-        
 
-	return self.create_roidb_from_box_list(box_list, gt_roidb)
+        weight_list = None
+        if 'weight' in f.keys():
+            weight_list = [np.transpose(f[element[0]][:]-1) for element in f['weight']]
+
+	return self.create_roidb_from_box_list(box_list, gt_roidb, weight_list)
 
     def _load_inria_annotation(self, index):
         """

@@ -89,6 +89,18 @@ def _sample_rois(roidb, fg_rois_per_image, rois_per_image, num_classes):
     overlaps = roidb['max_overlaps']
     rois = roidb['boxes']
 
+    #handle boosting CNN
+    if 'weight' in roidb.keys() and roidb['weight'] is not None:
+        weight = roidb['weight']
+        num_roi = len(rois)
+        assert len(weight) == num_roi
+
+        rnd_seed = np.random.random(num_roi)
+        keep = (np.array(weight).flat > rnd_seed)
+        labels = roidb['max_classes'][keep]
+        overlaps = roidb['max_overlaps'][keep]
+        rois = roidb['boxes'][keep]
+
     #handle when we don't have rois
     if len(rois) == 0:
         return [],[],[],[],[]

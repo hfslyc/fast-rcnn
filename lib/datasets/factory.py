@@ -40,7 +40,7 @@ for top_k in np.arange(1000, 11000, 1000):
 
 # Set up inria_<split> using selective search "fast" mode
 inria_devkit_path = '/home/eeb439/Documents/wayne/datasets/Caltech'
-for split in ['train01','train04','train04_noNms','test','train04_finetune','train04_tracking','train04_finetune_test','train04_finetune_80','train04_finetune_second']:
+for split in ['train01','train04','train04_score_ft','train04_noNms','test','train04_finetune','train04_tracking','train04_finetune_test','train04_finetune_80','train04_finetune_second']:
     name = '{}_{}'.format('inria', split)
     __sets[name] = (lambda split=split: datasets.inria.inria(split, inria_devkit_path))
 

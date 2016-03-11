@@ -112,6 +112,14 @@ class imdb(object):
             
             assert (boxes[:, 2] >= boxes[:, 0]).all(), "type {} img {} width : {}\n {} \n {} \n ".format(boxes.dtype,i,widths[i],boxes, self.roidb[i]['boxes'])
 
+            if 'weight' in self.roidb[i].keys():
+                entry = {'boxes' : boxes,
+                         'gt_boxes' : gt_boxes,
+                         'gt_overlaps' : self.roidb[i]['gt_overlaps'],
+                         'gt_classes' : self.roidb[i]['gt_classes'],
+                         'flipped' : True,
+                         'weight' : self.roidb[i]['weight']}
+            else:
             entry = {'boxes' : boxes,
                      'gt_boxes' : gt_boxes,
                      'gt_overlaps' : self.roidb[i]['gt_overlaps'],
@@ -161,7 +169,7 @@ class imdb(object):
 
         return ar, gt_overlaps, recalls, thresholds
 
-    def create_roidb_from_box_list(self, box_list, gt_roidb):
+    def create_roidb_from_box_list(self, box_list, gt_roidb, weight_list=None):
         assert len(box_list) == self.num_images, \
                 'Number of boxes must match number of ground-truth images'
         roidb = []
@@ -184,13 +192,22 @@ class imdb(object):
                     I = np.where(maxes > 0)[0]
                     overlaps[I, gt_classes[argmaxes[I]]] = maxes[I]
 
+            weight = None
+            if weight_list is not None:
+                weight = weight_list[i]
+                assert weight.shape[0] == num_boxes, 'weight num should be same as boxes num'
+            else:
+                print 'weight is None\n'
+
+
             overlaps = scipy.sparse.csr_matrix(overlaps)
             roidb.append({'boxes' : boxes,
                           'gt_boxes' : gt_boxes,
                           'gt_classes' : np.zeros((num_boxes,),
                                                   dtype=np.int32),
                           'gt_overlaps' : overlaps,
-                          'flipped' : False})
+                          'flipped' : False,
+                          'weight' : weight})
         return roidb
 
     @staticmethod
@@ -199,6 +216,10 @@ class imdb(object):
         for i in xrange(len(a)):
             a[i]['boxes'] = np.vstack((a[i]['boxes'], b[i]['boxes']))
             a[i]['gt_boxes'] = b[i]['gt_boxes'] #hackish
+
+            if 'weight' in b[i].keys():
+                a[i]['weight'] = b[i]['weight']
+
             a[i]['gt_classes'] = np.hstack((a[i]['gt_classes'],
                                             b[i]['gt_classes']))
             a[i]['gt_overlaps'] = imdb.vstack([a[i]['gt_overlaps'],
